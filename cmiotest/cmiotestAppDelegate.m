@@ -11,7 +11,7 @@
 
 static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL useShortDescription)
 {
-    if (useShortDescription && 0)
+    if (useShortDescription)
     {
         CMIOObjectShow(object);
     }
@@ -243,9 +243,9 @@ static void handleStreamQueueAltered(CMIOStreamID streamID, void* token, void* r
     for (int i = 0; i < dataSize / sizeof(CMIOObjectID); i++) {
         printf("-------------------------------\n");
         /*
-         Pass NO as last argument for a much briefer description
+         Pass YES as last argument for a much briefer description
          */
-        describeCMIOObject(devices[i], YES);
+        describeCMIOObject(devices[i], NO);
         printf("-------------------------------\n");
     }
     
