@@ -24,7 +24,7 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
         for (unsigned int i = 0; i < (depth * 4); i++) {
             tab[i] = ' ';
         }
-        tab[depth] = 0U;
+        tab[depth * 4] = 0U;
             
         CMIOObjectPropertyAddress opa = {kCMIOObjectPropertyClass, kCMIOObjectPropertyScopeGlobal, 0};
 
@@ -56,13 +56,34 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
                 className = "kCMIOExposureControlClassID";
                 break;
             default:
-                className = NULL;
+                className = "?";
                 break;
         }
-        printf("%sobject ID:%u class:%s (%u)\n", tab, object, className, classID);
-        
+        const char *objectName = "";
+        CFStringRef name = NULL;
+        opa.mSelector = kCMIOObjectPropertyName;
+        if (CMIOObjectHasProperty(object, &opa))
+        {
+            result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(name), &dataSize, &name);
+            if (result == 0)
+                objectName = CFStringGetCStringPtr(name, kCFStringEncodingUTF8);
+        }
+
+        printf("%sobject ID:%u class:%s (%u) \"%s\"\n", tab, object, className, classID, objectName);
+        if (name)
+            CFRelease(name);
+
         if (classID == kCMIOStreamClassID)
         {
+            opa.mSelector = kCMIOStreamPropertyDirection;
+            UInt32 direction;
+            result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(UInt32), &dataSize, &direction);
+            if (result != 0)
+            {
+                printf("%sError getting kCMIOStreamPropertyDirection for stream\n", tab);
+                return;
+            }
+            printf("%sStream is %s\n", tab, direction == 0 ? "output" : "input");
             opa.mSelector = kCMIOStreamPropertyFormatDescriptions;
             CFArrayRef streamDescriptions = NULL;
             if (CMIOObjectHasProperty(object, &opa))
@@ -175,6 +196,7 @@ static void describeCMIOObject(CMIOObjectID object, BOOL useShortDescription)
 
 static void handleStreamQueueAltered(CMIOStreamID streamID, void* token, void* refCon)
 {
+    /*
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     CMSimpleQueueRef q = ((cmiotestAppDelegate *)refCon).queue;
     CMSampleBufferRef buffer = (CMSampleBufferRef)CMSimpleQueueDequeue(q);
@@ -183,9 +205,7 @@ static void handleStreamQueueAltered(CMIOStreamID streamID, void* token, void* r
         CVPixelBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(buffer);
         if (pixelBuffer)
         {
-            /*
-             This is a terrible way to display video, don't do it in a real app
-             */
+     //This is a terrible way to display video, don't do it in a real app
             CIImage *cii = [CIImage imageWithCVImageBuffer:pixelBuffer];
             NSBitmapImageRep *bir = [[[NSBitmapImageRep alloc] initWithCIImage:cii] autorelease];
             NSImage *i = [[[NSImage alloc] init] autorelease];
@@ -193,8 +213,9 @@ static void handleStreamQueueAltered(CMIOStreamID streamID, void* token, void* r
             ((cmiotestAppDelegate *)refCon).image = i;
         }
         CFRelease(buffer);
-    } 
+    }
     [pool drain];
+*/
 }
 
 @implementation cmiotestAppDelegate
