@@ -73,6 +73,102 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
         if (name)
             CFRelease(name);
 
+        if (classID == kCMIODeviceClassID)
+        {
+            opa.mSelector = kCMIODevicePropertyTransportType;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                UInt32 type;
+                result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(UInt32), &dataSize, &type);
+                printf("%sDevice transport type 0x%x\n", tab, type);
+            }
+            else
+            {
+                printf("%sDevice has no transport type property\n", tab);
+            }
+            opa.mSelector = kCMIODevicePropertyCanProcessAVCCommand;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Boolean can;
+                result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(Boolean), &dataSize, &can);
+                printf("%sDevice %s process AVC commands\n", tab, can ? "CAN" : "can't");
+            }
+            else
+            {
+                printf("%sDevice has no kCMIODevicePropertyCanProcessAVCCommand property\n", tab);
+            }
+            opa.mSelector = kCMIODevicePropertyCanProcessRS422Command;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Boolean can;
+                result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(Boolean), &dataSize, &can);
+                printf("%sDevice %s process RS422 commands\n", tab, can ? "CAN" : "can't");
+            }
+            else
+            {
+                printf("%sDevice has no kCMIODevicePropertyCanProcessRS422Command property\n", tab);
+            }
+            opa.mSelector = kCMIODevicePropertyDeviceMaster;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Boolean isSettable;
+                result = CMIOObjectIsPropertySettable(object, &opa, &isSettable);
+                printf("%sDevice property %s settable for kCMIODevicePropertyDeviceMaster\n", tab, isSettable ? "IS" : "isn't");
+            }
+            else
+            {
+                printf("%sDevice has no kCMIODevicePropertyCanProcessRS422Command property\n", tab);
+            }
+            opa.mSelector = 'dord';
+            printf("%sDevice %s mysterious 'dord' property\n", tab, CMIOObjectHasProperty(object, &opa) ? "HAS" : "hasn't");
+
+            opa.mSelector = kCMIODevicePropertyStreams;
+            opa.mScope = kCMIODevicePropertyScopeInput;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                result = CMIOObjectGetPropertyDataSize(object, &opa, 0, NULL, &dataSize);
+                if (result == kCMIOHardwareNoError)
+                {
+                    int count = dataSize / sizeof(CMIOStreamID);
+                    printf("%sDevice has %d input stream%s:", tab, count, count == 1 ? "" : "s");
+                    CMIOStreamID streams[count];
+                    CMIOObjectGetPropertyData(object, &opa, 0, NULL, dataSize, &dataSize, &streams);
+                    for (int i = 0; i < count; i++) {
+                        if (i != 0)
+                            printf(",");
+                        printf("%d", streams[i]);
+                    }
+                    printf("\n");
+                }
+            }
+            else
+            {
+                printf("%sDevice has no input streams\n", tab);
+            }
+            opa.mScope = kCMIODevicePropertyScopeOutput;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                result = CMIOObjectGetPropertyDataSize(object, &opa, 0, NULL, &dataSize);
+                if (result == kCMIOHardwareNoError)
+                {
+                    int count = dataSize / sizeof(CMIOStreamID);
+                    printf("%sDevice has %d output stream%s:", tab, count, count == 1 ? "" : "s");
+                    CMIOStreamID streams[count];
+                    CMIOObjectGetPropertyData(object, &opa, 0, NULL, dataSize, &dataSize, &streams);
+                    for (int i = 0; i < count; i++) {
+                        if (i != 0)
+                            printf(",");
+                        printf("%d", streams[i]);
+                    }
+                    printf("\n");
+                }
+            }
+            else
+            {
+                printf("%sDevice has no output streams\n", tab);
+            }
+            opa.mScope = kCMIOObjectPropertyScopeGlobal;
+        }
         if (classID == kCMIOStreamClassID)
         {
             opa.mSelector = kCMIOStreamPropertyDirection;
@@ -88,6 +184,7 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
             CFArrayRef streamDescriptions = NULL;
             if (CMIOObjectHasProperty(object, &opa))
             {
+                printf("%sStream offers multiple formats\n", tab);
                 result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(CFArrayRef), &dataSize, &streamDescriptions);
                 if (result != 0)
                 {
@@ -100,6 +197,7 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
                 opa.mSelector = kCMIOStreamPropertyFormatDescription;
                 if (CMIOObjectHasProperty(object, &opa))
                 {
+                    printf("%sStream has fixed format\n", tab);
                     CMFormatDescriptionRef description;
                     result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(CMFormatDescriptionRef), &dataSize, &description);
                     if (result != 0)
@@ -108,6 +206,11 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
                         return;
                     }
                     streamDescriptions = CFArrayCreate(kCFAllocatorDefault, (const void **)&description, 1, &kCFTypeArrayCallBacks);
+                    CFRelease(description);
+                }
+                else
+                {
+                    printf("%sStream has no formats??\n", tab);
                 }
             }
             if (streamDescriptions != NULL)
@@ -156,6 +259,39 @@ static void _describeCMIOObject(CMIOObjectID object, unsigned int depth, BOOL us
             else
             {
                 printf("%sStream has no starting channel property\n", tab);
+            }
+            opa.mSelector = kCMIOStreamPropertyFrameRate;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Float64 rate;
+                result = CMIOObjectGetPropertyData(object, &opa, 0, NULL, sizeof(Float64), &dataSize, &rate);
+                printf("%sStream frame rate %f\n", tab, rate);
+            }
+            else
+            {
+                printf("%sStream has no frame rate property\n", tab);
+            }
+            opa.mSelector = kCMIOStreamPropertyEndOfData;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Boolean isSettable;
+                result = CMIOObjectIsPropertySettable(object, &opa, &isSettable);
+                printf("%sStream property %s settable for kCMIOStreamPropertyEndOfData\n", tab, isSettable ? "IS" : "isn't");
+            }
+            else
+            {
+                printf("%sStream has no property kCMIOStreamPropertyEndOfData\n", tab);
+            }
+            opa.mSelector = kCMIOStreamPropertyScheduledOutputNotificationProc;
+            if (CMIOObjectHasProperty(object, &opa))
+            {
+                Boolean isSettable;
+                result = CMIOObjectIsPropertySettable(object, &opa, &isSettable);
+                printf("%sStream property %s settable for kCMIOStreamPropertyScheduledOutputNotificationProc\n", tab, isSettable ? "IS" : "isn't");
+            }
+            else
+            {
+                printf("%sStream has no property kCMIOStreamPropertyScheduledOutputNotificationProc\n", tab);
             }
         }
         opa.mSelector = kCMIOObjectPropertyOwnedObjects;
